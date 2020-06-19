@@ -1,0 +1,31 @@
+{
+    "name": "Traditional Chinese to Simplified Chinese",
+    "segmentation": {
+        "type": "mmseg",
+        "dict": {
+            "type": "ocd2",
+            "file": "../py/clib/share/opencc/TSPhrases.ocd2"
+        }
+    },
+    "conversion_chain": [
+        {
+            "dict": {
+                "type": "group",
+                "dicts": [
+                    {
+                        "type": "text",
+                        "file": "./rules.txt"
+                    },
+                    {
+                        "type": "ocd2",
+                        "file": "../py/clib/share/opencc/TSPhrases.ocd2"
+                    },
+                    {
+                        "type": "ocd2",
+                        "file": "../py/clib/share/opencc/TSCharacters.ocd2"
+                    }
+                ]
+            }
+        }
+    ]
+}

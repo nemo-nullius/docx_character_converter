@@ -1,16 +1,16 @@
 """
 Overall thought:
 Find <w:p ...>...</w:p> as a isolated group for conversion.
-Extract <w:t ...>(..).</w:t> in that group and put them together as a new string.
+Extract <w:t ...>(...)</w:t> in that group and put them together as a new string.
 Convert the new string.
-Put the chars in the new string back to their own <w:t ...>(..).</w:t>
+Put the chars in the new string back to their own <w:t ...>(...)</w:t>
 Find next isolated group.
 """
 import os
 import re
 import sys
 import regex
-import opencc
+import opencc_mod
 import zipfile
 import tempfile
 import ProcessFile as PF
@@ -58,7 +58,7 @@ class DocxHanlder(object):
             self.s_footnotes = docx.read(self.zip_footnotes_path).decode("utf-8")
 
     def _convert(self, s_A):
-        converter = opencc.OpenCC(self.configfile)
+        converter = opencc_mod.OpenCC(self.configfile)
         s_B = converter.convert(s_A)
         # if len(s_B) != len(s_A): raise Exception("[Err] s_A s_B not same length!")
         return s_B
