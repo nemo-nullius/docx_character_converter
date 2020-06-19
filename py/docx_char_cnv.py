@@ -6,13 +6,13 @@ Convert the new string.
 Put the chars in the new string back to their own <w:t ...>(..).</w:t>
 Find next isolated group.
 """
-import re
-import regex
 import os
-import tempfile
-import zipfile
+import re
+import sys
+import regex
 import opencc
-import xml.etree.ElementTree as ET
+import zipfile
+import tempfile
 import ProcessFile as PF
 
 
@@ -57,7 +57,7 @@ class DocxHanlder(object):
             self.s_endnotes = docx.read(self.zip_endnotes_path).decode("utf-8")
             self.s_footnotes = docx.read(self.zip_footnotes_path).decode("utf-8")
 
-    def _trad2simp(self, s_A):
+    def _convert(self, s_A):
         converter = opencc.OpenCC(self.configfile)
         s_B = converter.convert(s_A)
         # if len(s_B) != len(s_A): raise Exception("[Err] s_A s_B not same length!")
@@ -80,44 +80,17 @@ class DocxHanlder(object):
         # result[1::2] = l2
         return result
 
-    def _convert_a2b_old(self, sxml, fn_conv):
+    def _convert_xml(self, sxml, fn_conv):
         """
-        for fn_conv give no marks of alternative choices
-        :param sxml:
-        :param fn_conv:
-        :return:
-        """
-        para_wrapper_list = re.split(r"<w:p.*?</w:p>", sxml)
-        para_list = re.findall(r"<w:p.*?</w:p>", sxml)
-        if len(para_wrapper_list) != len(para_list) + 1: raise Exception("[ERR] Wrong para_list!")
-        para_list_new = []
-        for para in para_list:
-            frag_wrapper_list = re.split(r"<w:t>.*?</w:t>", para)
-            # TODO: <w:t xml:space="preserve"> </w:t> is omitted. Should it be included?
-            frag_list = re.findall(r"<w:t>(.*?)</w:t>", para)
-            if len(frag_wrapper_list) != len(frag_list) + 1: raise Exception("[ERR] Wrong frag_list!")
-            para_text = "".join(frag_list)
-            para_text_new = fn_conv(para_text)
-            frag_list_new = []
-            frag_offset = 0
-            for frag in frag_list:
-                frag_len = len(frag)
-                frag_list_new.append(para_text_new[frag_offset: frag_offset + frag_len])
-                frag_offset += frag_len
-            para_new = "".join(self._combine_list_alternate(frag_wrapper_list,
-                                                            ["<w:t>%s</w:t>" % x for x in frag_list_new]))
-            para_list_new.append(para_new)
-        sxml_new = "".join(self._combine_list_alternate(para_wrapper_list, para_list_new))
-        return sxml_new
-
-    def _convert_a2b(self, sxml, fn_conv):
-        """
-        for fn_conv give marks for alternative choices
+        for fn_conv which outputs converted characters
+        along with numbers indicating how many choices there are in the dictionary entry
         :param sxml:
         :param fn_conv:
         :param fn_conv_flg: Whether the conv function will also give marks of alternative choices
         :return:
         """
+        sum_input_char = 0
+        sum_output_char = 0
         html_para_list = []
         para_wrapper_list = re.split(r"<w:p.*?</w:p>", sxml)
         para_list = re.findall(r"<w:p.*?</w:p>", sxml)
@@ -129,19 +102,26 @@ class DocxHanlder(object):
             frag_list = regex.findall(p_frag, para)
             if len(frag_wrapper_list) != len(frag_list) + 1: raise Exception("[ERR] Wrong frag_list!")
             para_text = "".join(frag_list)
-            # para_text_new = fn_conv(para_text)
+            sum_input_char += len(para_text)
             para_conv = fn_conv(para_text)
             if not (re.search(r"^(.\d)*$", para_conv)):
                 raise Exception("[Err] para_conv not correct!\n" + para_conv)
             # [{char: mark}, {"祇": 2}, ...]
             para_char_mark_list = [{"c": x, "m": int(y)} for x, y in zip(para_conv[::2], para_conv[1::2])]
             para_text_new = "".join([x["c"] for x in para_char_mark_list])
+            sum_output_char += len(para_text_new)
             frag_list_new = []
             frag_offset = 0
-            for frag in frag_list:
+            if len(para_text) != len(para_text_new):
+                print("[Warn] Input & Output not equal char numbers.")
+            # If len(para_text) != len(para_text_new)
+            # Then all the differences are accumulated to the final append call
+            for frag in frag_list[:-1]:
                 frag_len = len(frag)
                 frag_list_new.append(para_text_new[frag_offset: frag_offset + frag_len])
                 frag_offset += frag_len
+            frag_list_new.append(para_text_new[frag_offset:])
+
             para_new = "".join(self._combine_list_alternate(frag_wrapper_list,
                                                             ["%s" % x for x in frag_list_new]))
             para_list_new.append(para_new)
@@ -160,29 +140,41 @@ class DocxHanlder(object):
 
         html_body = '<body>\n%s\n</body>' % "\n".join(html_para_list)
         sxml_new = "".join(self._combine_list_alternate(para_wrapper_list, para_list_new))
-        return sxml_new, html_body
+        return sxml_new, html_body, sum_input_char, sum_output_char
 
     def test_conv_same(self):
-        s = self._convert_a2b(self.s_document, lambda x: x)
-        PF.write_bytes_into_file("./document2.xml", s.encode("utf-8"))
-        s = self._convert_a2b(self.s_endnotes, lambda x: x)
-        PF.write_bytes_into_file("./endnotes2.xml", s.encode("utf-8"))
-        s = self._convert_a2b(self.s_footnotes, lambda x: x)
-        PF.write_bytes_into_file("./footnotes2.xml", s.encode("utf-8"))
+        s = self._convert_xml(self.s_document, lambda x: x)
+        PF.write_bytes_into_file("./document2.xml", s[0].encode("utf-8"))
+        s = self._convert_xml(self.s_endnotes, lambda x: x)
+        PF.write_bytes_into_file("./endnotes2.xml", s[0].encode("utf-8"))
+        s = self._convert_xml(self.s_footnotes, lambda x: x)
+        PF.write_bytes_into_file("./footnotes2.xml", s[0].encode("utf-8"))
 
-    def test_conv_trad2simp(self):
-        bdoc, htmldoc = self._convert_a2b(self.s_document, self._trad2simp)
-        bfn, htmlfn = self._convert_a2b(self.s_footnotes, self._trad2simp)
-        ben, htmlen = self._convert_a2b(self.s_endnotes, self._trad2simp)
-        # PF.write_bytes_into_file("./document2s.xml", s.encode("utf-8"))
+    def convert(self):
+        bdoc, htmldoc, doc_in_char_sum, doc_out_char_sum = self._convert_xml(self.s_document, self._convert)
+        bfn, htmlfn, fn_in_char_sum, fn_out_char_sum = self._convert_xml(self.s_footnotes, self._convert)
+        ben, htmlen, en_in_char_sum, en_out_char_sum = self._convert_xml(self.s_endnotes, self._convert)
         html = """<!DOCTYPE html>\n<html>\n%s<br />%s<br />%s<br />\n</html>""" % (htmldoc, htmlfn, htmlen)
         generate_zip(self.filepath, {self.zip_document_path: bdoc.encode("utf-8"),
                                      self.zip_endnotes_path: ben.encode("utf-8"),
                                      self.zip_footnotes_path: bfn.encode("utf-8"), })
         PF.write_into_file(self.filename8+"_forcheck.html", html)
+        print("Finish.")
+        print("[Document] Input %d\tOutput %d" %(doc_in_char_sum, doc_out_char_sum))
+        print("[Footnote] Input %d\tOutput %d" %(fn_in_char_sum, fn_out_char_sum))
+        print("[Endnote] Input %d\tOutput %d" %(en_in_char_sum, en_out_char_sum))
 
+
+def main():
+    if len(sys.argv) < 3:
+        print("[Err] Bad parameters.\nUsage:\npython docx_char_cnv.py <filename> <config>")
+        print("For example:\npython docx_char_cnv.py sample.docx t2s.json")
+        sys.exit(-1)
+    filename = sys.argv[1]
+    configfile = sys.argv[2]
+    docx = DocxHanlder(filename, configfile=configfile)
+    docx.convert()
 
 
 if __name__ == "__main__":
-    docx = DocxHanlder("./sample.docx", configfile="t2s.json")
-    docx.test_conv_trad2simp()
+    main()
