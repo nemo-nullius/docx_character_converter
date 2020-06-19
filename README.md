@@ -14,7 +14,9 @@ conversion.
 1. Download `opencc.dll` 
     [here](https://github.com/nemo-nullius/OpenCC/releases)
     and put it in `py/clib/bin/`. 
-    **NOTE: this release is compiled for Windows 10 64bit version.
+    **NOTE: this release is modified based on [OpenCC](https://github.com/BYVoid/OpenCC),
+    and the modification can be seen [here](https://github.com/BYVoid/OpenCC/compare/master...nemo-nullius:master).
+    It is compiled for Windows 10 64bit version.
     Please download the source code and compile it for other platforms.**
 1. Download [config files](https://github.com/BYVoid/OpenCC/tree/master/data/config)
    and [dictionaries](https://github.com/BYVoid/OpenCC/tree/master/data/dictionary),
