@@ -1,3 +1,5 @@
 .idea
 demo
 __pycache__
+cpp/test
+cpp/cmake-*
