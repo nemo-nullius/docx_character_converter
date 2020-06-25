@@ -12,7 +12,10 @@ int main(int argc, char * argv[]){
     }
     const string docxFilename = argv[1];
     string openccConfigFilename = argv[2];
-    int configFileFlg = Utils::openccConfigFileLocator(openccConfigFilename);
+    string exeFilename, exeFolderpath;
+    int splitFilepathFlg = Utils::splitFilepath(string(argv[0]), exeFolderpath, exeFilename);
+
+    int configFileFlg = Utils::openccConfigFileLocator(exeFolderpath, openccConfigFilename);
     std::cout << "[INFO] Using opencc config file at " + openccConfigFilename << std::endl;
     if (configFileFlg!=0) {
         std::cout << "[ERR] Could not find opencc config file!" << std::endl;

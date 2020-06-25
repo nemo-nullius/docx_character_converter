@@ -36,21 +36,38 @@ void Utils::zipReadOneFile(const char *zipFilename, const char *inZipFilename, s
     zip_close(z0);
 }
 
-int Utils::openccConfigFileLocator(string &configFilePath) {
-    if (std::filesystem::exists(configFilePath)) {
-        return 0;
+int Utils::splitFilepath(const string & str, string & folderpath, string & filename){
+    size_t found;
+    /* Searches the string for the last character that matches ANY of the characters specified in its arguments. */
+    found = str.find_last_of("/\\");
+    if (found >= str.length()){ // not found
+        folderpath = "";
+        filename = str;
+        return -1;
     }
-    string newPath;
+    folderpath = str.substr(0, found);
+    filename = str.substr(found+1);
+    return 0;
+}
+
+int Utils::openccConfigFileLocator(const string & exeCallFolder, string &configFilePath) {
+    if (std::filesystem::exists(configFilePath)) { return 0; }
+    // check .json
+    if (configFilePath.length() > 5 &&
+        configFilePath.substr(configFilePath.length() - 5, 5) == string(".json")) {
+        // do nothing
+    } else {
+        configFilePath = configFilePath + ".json";
+    }
+    if (std::filesystem::exists(configFilePath)) { return 0; }
+    // check full path
     if (configFilePath.find('\\') == string::npos && configFilePath.find('/') == string::npos) {
-        if (configFilePath.length() > 5 && configFilePath.substr(configFilePath.length() - 5, 5) == string(".json")) {
-            newPath = "./share/opencc/" + configFilePath;
+        if (exeCallFolder.length()==0) {
+            configFilePath = "share/opencc/" + configFilePath;
         } else {
-            newPath = "./share/opencc/" + configFilePath + ".json";
+            configFilePath = exeCallFolder + "/share/opencc/" + configFilePath;
         }
     }
-    configFilePath = newPath;
-    if (std::filesystem::exists(configFilePath)) {
-        return 0;
-    }
+    if (std::filesystem::exists(configFilePath)) { return 0; }
     return -1;
 }

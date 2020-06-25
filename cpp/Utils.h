@@ -12,6 +12,8 @@ namespace Utils{
 
     void zipReadOneFile(const char *zipFilename, const char *inZipFilename, string &content);
 
-    int openccConfigFileLocator(string &configFilePath);
+    int openccConfigFileLocator(const string &exeCallPath, string &configFilePath);
+
+    int splitFilepath(const string &str, string &folderpath, string &filename);
 }
 #endif //DOCX_CHAR_CNV_UTILS_H
